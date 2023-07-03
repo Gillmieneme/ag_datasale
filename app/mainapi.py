@@ -23,6 +23,12 @@ app.add_middleware(
     allow_headers=["*"],#allwo which headers
 )
 
+@app.get('/')
+def home():
+   return{
+      "message":"we are in home baby"
+   }
+
 @app.post("/get",response_model=List[schema.response])
 def get_posts(d:schema.dates, db: Session=Depends(get_db),current_user:int =Depends(auth.get_current_user)):
     dd=d.dict()
