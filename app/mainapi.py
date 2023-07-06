@@ -1,19 +1,236 @@
 from fastapi import FastAPI,Request, status
 from sqlalchemy.orm import Session,column_property
-from sqlalchemy import asc
-from .database import get_db
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI,Response,status,HTTPException,Depends, APIRouter
-from .database import engine
-from .import models, schema,auth
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from typing import List
 from sqlalchemy import func
 from sqlalchemy.sql import text
 import sqlalchemy as bb
+from mangum import Mangum
+from jose import JWTError,jwt
+from datetime import datetime, timedelta
+from fastapi import Depends,status,HTTPException
+from fastapi.security import OAuth2PasswordBearer
+oauth2_scheme= OAuth2PasswordBearer(tokenUrl='login')
+from sqlalchemy.orm import Session
+from passlib.context import CryptContext
+from pydantic import BaseSettings
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import psycopg2
+import psycopg2.extras 
+from psycopg2.extras  import RealDictCursor
+import time
+from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy.sql.sqltypes import TIMESTAMP, DATE
+from sqlalchemy.sql.expression import text
+from sqlalchemy import func
+from sqlalchemy.orm import column_property
+from pydantic import BaseModel, validator
+from datetime import date,datetime
+from typing import Optional
+from pydantic.types import conint
+from passlib.hash import pbkdf2_sha256
 
-models.base.metadata.create_all(bind=engine)
+
+
+
+
+# #TO CHECK ALL THE ENVIRONMENT VARIABLES ARE THERE
+# class Settings(BaseSettings):#checks local environment variablea (IN THE HOST)to see if the following variables are there
+#    database_hostname:str
+#    database_port:str
+#    database_password:str
+#    database_name:str
+#    database_username:str
+#    secret_key:str
+#    algorithm:str
+#    access_token_expire_minutes:int
+  
+#    class Config:
+#        env_file=".env"
+
+
+# settings= Settings()
+
+
+
+
+
+SQLALCHEMY_DATABASE_URL=f'postgresql://arjangill:gill1239191@ag-sales.cakbpijtfzog.ap-southeast-2.rds.amazonaws.com:5432/arjansales'
+
+engine= create_engine(SQLALCHEMY_DATABASE_URL)
+
+sessionlocal= sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+base= declarative_base()
+
+def get_db(): # TO GET CONNECTION TO DATABASE
+   db= sessionlocal()
+   try:
+      yield db
+   finally:
+      db.close()
+ 
+
+
+class Income(base):
+    __tablename__="income"
+    
+    id= Column(Integer,primary_key=True,nullable=False)
+    is_deleted=Column(Boolean,nullable=False,server_default='0')
+    user_id=Column(Integer,nullable=False)
+    dates=Column(DATE, nullable=False,)
+    type_val=Column(Integer,nullable=False)
+    detail=Column(String(100),nullable=False)
+    amount =Column(Integer,nullable=False)
+    formatted_datetime = column_property(func.to_char(dates, "DD-MM-YYYY"))
+    
+
+class User(base):
+    __tablename__='users'
+    id=Column(Integer,primary_key=True,nullable=False) 
+    username=Column(String(100),nullable=False,unique=True)
+    password=Column(String(400),nullable=False)
+
+
+class Income_pydantic(BaseModel):
+    
+    dates:date
+    type_val:int
+    detail:str 
+    amount:int
+    @validator("dates", pre=True)
+    def prase_formatted_datetime(cls, value):
+        return datetime.strptime(
+            value,
+             "%d-%m-%Y"
+        )
+    
+
+    class Config:
+        orm_mode=True
+
+
+class Token(BaseModel):
+    access_token:str
+    token_type:str
+
+class TokenData(BaseModel):
+    id:Optional[str] = None
+
+class UserCreate(BaseModel):
+    username:str
+    password:str
+
+class UserLogin(BaseModel):
+    username:str
+    password:str
+
+class UserResponce(BaseModel):
+    id:int
+    username:str
+    class Config:
+        orm_mode=True
+
+class dates(BaseModel):
+    date_from:date
+    date_to:date
+    @validator("date_from","date_to", pre=True)
+    def prase_formatted_datetime(cls, value):
+        return datetime.strptime(
+            
+            value,
+             "%d-%m-%Y"
+        )
+
+class response(BaseModel):
+    id:int
+    formatted_datetime:str
+    type_val:int
+    detail:str
+    amount:int
+
+   
+    class Config:
+        orm_mode=True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SECRET_KEY="09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
+
+def create_access_token(data:dict):
+   to_encode= data.copy()
+   expire=datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+   to_encode.update({'exp':expire})
+
+   encoded_jwt= jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM) #(datalode, secret key, algorithm)
+   return encoded_jwt
+
+
+def verify_access_token(token:str,credentials_exceptions):
+    try:
+        payload=jwt.decode(token, SECRET_KEY,algorithms=[ALGORITHM])
+        id:str=payload.get("user_id")
+
+        if  id is None:
+           raise credentials_exceptions
+        token_data=TokenData(id=id)
+
+    except JWTError:  
+        raise credentials_exceptions
+    
+    return token_data
+    
+def get_current_user(token:str = Depends(oauth2_scheme), db:Session=Depends(get_db)):
+    credentials_exceptions=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials",headers={"WWW-Authrnticate":"Bearer"})   
+    
+    token= verify_access_token(token,credentials_exceptions)
+    user=db.query(User).filter(User.id==token.id).first()
+
+    return user
+
+
+
+
+
+def hash(password:str):
+    
+    return pbkdf2_sha256.hash(password)
+
+
+def verify(plain_pass,harsh_pass):#fun gives the value of true or false
+    print(plain_pass)
+    print(harsh_pass)
+    
+    x =pbkdf2_sha256.verify(plain_pass, harsh_pass)
+    
+   
+    return x
+
+
+
+
+
+
+base.metadata.create_all(bind=engine)
 app=FastAPI()
+handler=Mangum(app)
 # origions=["*"] 
 app.add_middleware(
     CORSMiddleware,
@@ -29,21 +246,22 @@ def home():
       "message":"we are in home baby"
    }
 
-@app.post("/get",response_model=List[schema.response])
-def get_posts(d:schema.dates, db: Session=Depends(get_db),current_user:int =Depends(auth.get_current_user)):
+
+@app.post("/get",response_model=List[response])
+def get_posts(d:dates, db: Session=Depends(get_db),current_user:int =Depends(get_current_user)):
     dd=d.dict()
     dd['date_from'] = dd['date_from'].strftime("%Y/%m/%d")
     dd['date_to'] = dd['date_to'].strftime("%Y/%m/%d")
-    postes=db.query(models.Income).filter(models.Income.user_id==current_user.id,models.Income.dates >= dd['date_from'] ,models.Income.dates <= dd['date_to'],models.Income.is_deleted==False).order_by(models.Income.dates.asc()).all()
+    postes=db.query(Income).filter(Income.user_id==current_user.id,Income.dates >= dd['date_from'] ,Income.dates <= dd['date_to'],Income.is_deleted==False).order_by(Income.dates.asc()).all()
     return postes
 
 
 @app.get("/latest")
-def get_posts( db: Session=Depends(get_db),current_user:int =Depends(auth.get_current_user)):
-    
-    query = db.query(models.Income.amount).filter(models.Income.is_deleted==False,models.Income.user_id==current_user.id,models.Income.type_val==1).all()
-    query_exp=db.query(models.Income.amount).filter(models.Income.is_deleted==False,models.Income.user_id==current_user.id,models.Income.type_val==2).all()
-    query_pay=db.query(models.Income.amount).filter(models.Income.is_deleted==False,models.Income.user_id==current_user.id,models.Income.type_val==3).all()
+def get_posts( db: Session=Depends(get_db),current_user:int =Depends(get_current_user)):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    query = db.query(Income.amount).filter(Income.is_deleted==False,Income.user_id==current_user.id,Income.type_val==1).all()
+    query_exp=db.query(Income.amount).filter(Income.is_deleted==False,Income.user_id==current_user.id,Income.type_val==2).all()
+    query_pay=db.query(Income.amount).filter(Income.is_deleted==False,Income.user_id==current_user.id,Income.type_val==3).all()
     a=0
     b=0
     c=0
@@ -57,11 +275,11 @@ def get_posts( db: Session=Depends(get_db),current_user:int =Depends(auth.get_cu
        c=c+i[0]
     profit=a-(b+c)  
     
-    return  profit
+    return  {"profit":profit,"usernaem":user.username}
 
 
 @app.post("/posts",status_code=status.HTTP_201_CREATED)
-def create_post(income:schema.Income,db: Session=Depends(get_db),current_user:int =Depends(auth.get_current_user)):
+def create_post(income:Income_pydantic,db: Session=Depends(get_db),current_user:int =Depends(get_current_user)):
     
     incomes=income.dict()
     incomes['dates'] = incomes['dates'].strftime("%Y/%m/%d")
@@ -71,7 +289,7 @@ def create_post(income:schema.Income,db: Session=Depends(get_db),current_user:in
    
     
     incomes["user_id"]=current_user.id
-    new_post=models.Income(**incomes)
+    new_post=Income(**incomes)
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -80,10 +298,10 @@ def create_post(income:schema.Income,db: Session=Depends(get_db),current_user:in
 
 
 @app.put("/delete/{id}")
-def delete_post(id:int,db: Session = Depends(get_db),current_user:int =Depends(auth.get_current_user)): #id is integer
+def delete_post(id:int,db: Session = Depends(get_db),current_user:int =Depends(get_current_user)): #id is integer
     print(id)
     id_user=current_user.id
-    post= db.query(models.Income).filter(models.Income.id==id,models.Income.user_id==id_user).first()
+    post= db.query(Income).filter(Income.id==id,Income.user_id==id_user).first()
     post.is_deleted=True
     
  
@@ -91,13 +309,15 @@ def delete_post(id:int,db: Session = Depends(get_db),current_user:int =Depends(a
     return ("Post deleted")
 
 
-@app.post("/user",status_code=status.HTTP_201_CREATED, response_model=schema.UserResponce)
-def create_user(new_user:schema.UserCreate,db: Session = Depends(get_db)):
+@app.post("/user",status_code=status.HTTP_201_CREATED, response_model=UserResponce)
+def create_user(new_user:UserCreate,db: Session = Depends(get_db)):
    #has the password- user.passowrd
-   hashed_password=auth.hash(new_user.password)
+   hashed_password=hash(new_user.password)
+   print(hashed_password)
    new_user.password= hashed_password
-
-   user=models.User(**new_user.dict())
+   
+   user=User(**new_user.dict())
+   print(user)
    db.add(user)
    db.commit()
    db.refresh(user)
@@ -106,14 +326,17 @@ def create_user(new_user:schema.UserCreate,db: Session = Depends(get_db)):
 
 
 
-@app.post('/login', response_model=schema.Token)
-def login( user_credentials:schema.UserLogin, db:Session = Depends(get_db)):
- user = db.query(models.User).filter(models.User.username == user_credentials.username).first()
+@app.post('/login')
+def login( user_credentials:UserLogin, db:Session = Depends(get_db)):
+ user = db.query(User).filter(User.username == user_credentials.username).first()
+ username = db.query(User.username).filter(User.username == user_credentials.username).first()
  if not user:
   raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail=f"invalid credentials")
  
- if not auth.verify( user_credentials.password,user.password): #if it is true, returns token,,,,if not it raises an exception
+ if not verify( user_credentials.password,user.password): #if it is true, returns token,,,,if not it raises an exception
   raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="invalid credentials")
 
- access_token=auth.create_access_token(data={"user_id": user.id})
- return{"access_token": access_token, "token_type":"bearer"}
+ access_token=create_access_token(data={"user_id": user.id})
+ print(access_token)
+ return{"access_token": access_token, "token_type":"bearer","user_name":user.username}
+
