@@ -1,0 +1,595 @@
+<!DOCTYPE html> 
+<html>
+<head> 
+    		<!-- Meta tags -->
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="ie=edge">
+		<!-- //Meta tags -->
+    <link rel="stylesheet" href="css/style.css" type="text/css" media="all" /><!-- Style-CSS -->
+    <link href="css/font-awesome.css" rel="stylesheet"><!-- font-awesome-icons -->
+	<!-- <script src="stock-signup-form-starter\jquery.js"></script> -->
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+   
+    <script src="https://kit.fontawesome.com/0ab133c172.js" crossorigin="anonymous"></script> 
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.4.1/jspdf.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/2.3.5/jspdf.plugin.autotable.min.js"></script>
+   <!-- <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+   <link rel="stylesheet" href="/resources/demos/style.css"> -->
+   <!-- // datepicker  -->
+   <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+   <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+   
+  
+
+</head>
+<script>
+
+
+$( function() {
+   
+    $( "#date" ).datepicker({
+        dateFormat: 'dd-mm-yy',
+      defaultDate: new Date()
+    });
+  } );
+  
+
+
+
+
+$( function() {
+    $( "#date2" ).datepicker({
+        dateFormat: 'dd-mm-yy',
+        defaultDate:'today'
+    });
+  } );
+
+  var urll="https://33zozf7hzkfvv3wrdbnf4xf4ye0hnkxj.lambda-url.ap-southeast-2.on.aws";
+var iio=[]
+var inc=[]
+var exp=[]
+var pur=[]
+var ddd=[]
+
+function get_data(){
+ 
+    var x=$('#date').val();
+    var y=$('#date2').val();
+   
+
+    if (x<=y){
+    $(".lds-spinner").toggle();
+    $("#dtable").toggle();
+     var JWT =  sessionStorage.getItem("tokeneses");
+	var form_data={date_from:x,date_to:y};
+	
+    $.ajax({
+		url:urll+"/get",    
+        type: 'post',
+		data:  JSON.stringify(form_data),
+		headers: { "Content-Type": "application/json",
+		'Authorization': 'Bearer ' + JWT },
+        dataType:"json",
+        
+        complete: function(r){
+            var dataes=r.responseText
+            var json_rep= JSON.parse(dataes);
+            console.log('success amount',json_rep);
+            $("#dtable tbody").empty();
+            iio=[];
+            output_show(json_rep);
+        },
+	        error: function(xhr, status, error) {
+       console.log("error")                    
+ }
+})
+    
+    }
+   else{
+    alert("INNOCRECT DATE FORMAT")
+   }
+
+
+}; 
+
+
+var oo=0;
+
+
+function output_show(input){
+    if (input[0]==null)
+{
+    alert("NO DATA TO SHOW")
+    ddd.push(0);
+    $(".lds-spinner").hide();
+    return false
+    
+}
+ $(".copy-right").toggle()
+    $(input).each(function(i){
+               var ok=input[i]
+ 
+               oo=oo+1;
+        
+        var datez=ok['formatted_datetime'];
+        var detail=ok['detail'];
+        var amount=ok['amount'];
+        var sale=[];
+        var expense=[];
+        var purchase=[];
+        var check=ok['type_val'];
+       
+
+        if (check==1){
+            sale=amount;
+            inc.push(sale)
+        };
+        if (check==2){
+            expense=amount;
+            exp.push(expense)
+        };
+        if (check==3){
+            purchase=amount;
+            pur.push(purchase)
+        }
+
+
+        var nulls=[];
+        var iid=ok["id"]
+        iio.push(iid)
+        
+        
+        
+        var id_expense_table= oo+"exp";
+        var tds='<tr id='+oo+' ><td>' + datez + '</td>'+'<td>' + detail + '</td><td>' + sale + '</td><td>'+ purchase + '</td><td>'+ expense+ '</td><td  class="delete_bt"><button type="button" id="btnAdd"  class="button1"   style="margin: 0px 2px 9px 0px;"  onclick='+ "delete_id($(this).closest('tr').attr('id'))" + '><i class="fa fa-trash-o" aria-hidden="true"></i>  </button> </td></tr>';
+	    $("#dtable ").append(tds); 
+                })
+        var nulls=[];
+
+        var total_income=0;
+        for ( var i of inc){	
+            total_income=total_income+i}
+
+        var total_exp=0;
+        for ( var i of exp){	
+            total_exp=total_exp+i}
+
+        var t_pur=0;
+        for ( var i of pur){	
+            t_pur=t_pur+i}
+
+        var profits= total_income-(total_exp+t_pur)
+
+        var tt='<tr id='+oo+' style="font-weight:bold;" ><td>' + "TOTAL" + '</td>'+'<td>' + nulls + '</td><td>' + total_income + '</td><td>'+ t_pur +'</td><td>'+  total_exp+'</td></tr>'    ;
+	    $("#dtable ").append(tt);
+        var tp='<tr id='+oo+' style="font-weight:bold;" ><td>' + "PROFIT" + '</td>'+'<td>' + nulls + '</td><td>' + nulls + '</td><td>'+  nulls+'</td><td>'  + profits + '</td></tr>';
+        $("#dtable ").append(tp);
+           
+            oo=0;
+            inc=[];
+           exp=[];
+           pur=[];
+           $(".lds-spinner").toggle();;
+           $("#dtable").toggle();
+        };
+        
+
+
+function delete_id(x){
+
+  let text = "DO YOU WANT TO DELETE?";
+  if (confirm(text) == true) {
+    
+    id_table=iio[x-1];
+    var JWT =  sessionStorage.getItem("tokeneses");
+    $.ajax({
+	        url: urll+"/delete/"+id_table,    
+            type: 'put',
+	        headers: { "Content-Type": "application/json",
+	        'Authorization': 'Bearer ' + JWT },
+            dataType:"json",
+        
+    success: function(r){ 
+            console.log("done"),
+            get_data(),
+            alert("DELETED") 
+           
+              },
+	error: function(xhr, status, error) {   
+            
+             console.log("nopr");                     
+                }
+            })
+  } else {
+   alert("NOT DELETED")
+  } 
+}
+
+(function($){
+
+
+
+$.fn.extend({
+    tableHTMLExport: function(options) {
+
+        var defaults = {
+            separator: ',',
+            newline: '\r\n',
+            ignoreColumns: '',
+            ignoreRows: '',
+            type:'csv',
+            htmlContent: false,
+            consoleLog: false,
+            trimContent: true,
+            quoteFields: true,
+            filename: 'tableHTMLExport.csv'
+        };
+        var options = $.extend(defaults, options);
+
+
+        function quote(text) {
+            return '"' + text.replace('"', '""') + '"';
+        }
+
+
+        function parseString(data){
+
+            if(defaults.htmlContent){
+                content_data = data.html().trim();
+            }else{
+                content_data = data.text().trim();
+            }
+            return content_data;
+        }
+
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+        /**
+         * Convierte la tabla enviada a json
+         * @param el
+         * @returns {{header: *, data: Array}}
+         */
+        function toJson(el){
+
+            var jsonHeaderArray = [];
+            $(el).find('thead').find('tr').not(options.ignoreRows).each(function() {
+                var tdData ="";
+                var jsonArrayTd = [];
+
+                $(this).find('th').not(options.ignoreColumns).each(function(index,data) {
+                    if ($(this).css('display') != 'none'){
+                        jsonArrayTd.push(parseString($(this)));
+                    }
+                });
+                jsonHeaderArray.push(jsonArrayTd);
+
+            });
+
+            var jsonArray = [];
+            $(el).find('tbody').find('tr').not(options.ignoreRows).each(function() {
+                var tdData ="";
+                var jsonArrayTd = [];
+
+                $(this).find('td').not(options.ignoreColumns).each(function(index,data) {
+                    if ($(this).css('display') != 'none'){
+                        jsonArrayTd.push(parseString($(this)));
+                    }
+                });
+                jsonArray.push(jsonArrayTd);
+
+            });
+
+
+            return {header:jsonHeaderArray[0],data:jsonArray};
+        }
+
+
+        /**
+         * Convierte la tabla enviada a csv o texto
+         * @param table
+         * @returns {string}
+         */
+        function toCsv(table){
+            var output = "";
+
+            var rows = table.find('tr').not(options.ignoreRows);
+
+            var numCols = rows.first().find("td,th").not(options.ignoreColumns).length;
+
+            rows.each(function() {
+                $(this).find("td,th").not(options.ignoreColumns)
+                    .each(function(i, col) {
+                        var column = $(col);
+
+                        // Strip whitespaces
+                        var content = options.trimContent ? $.trim(column.text()) : column.text();
+
+                        output += options.quoteFields ? quote(content) : content;
+                        if(i !== numCols-1) {
+                            output += options.separator;
+                        } else {
+                            output += options.newline;
+                        }
+                    });
+            });
+
+            return output;
+        }
+
+
+        var el = this;
+        var dataMe;
+        if(options.type == 'csv' || options.type == 'txt'){
+
+
+            var table = this.filter('table'); // TODO use $.each
+
+            if(table.length <= 0){
+                throw new Error('tableHTMLExport must be called on a <table> element')
+            }
+
+            if(table.length > 1){
+                throw new Error('converting multiple table elements at once is not supported yet')
+            }
+
+            dataMe = toCsv(table);
+
+            if(defaults.consoleLog){
+                console.log(dataMe);
+            }
+
+            download(options.filename,dataMe);
+
+
+            //var base64data = "base64," + $.base64.encode(tdData);
+            //window.open('data:application/'+defaults.type+';filename=exportData;' + base64data);
+        }else if(options.type == 'json'){
+
+            var jsonExportArray = toJson(el);
+
+            if(defaults.consoleLog){
+                console.log(JSON.stringify(jsonExportArray));
+            }
+            dataMe = JSON.stringify(jsonExportArray);
+
+            download(options.filename,dataMe)
+            /*
+            var base64data = "base64," + $.base64.encode(JSON.stringify(jsonExportArray));
+            window.open('data:application/json;filename=exportData;' + base64data);*/
+        }else if(options.type == 'pdf'){
+
+            var jsonExportArray = toJson(el);
+
+            if(defaults.consoleLog){
+                console.log(jsonExportArray);
+            }
+
+            var doc = new jsPDF('p', 'pt');
+            doc.autoTable(jsonExportArray.header, jsonExportArray.data);
+            doc.save(options.filename);
+
+        }
+        return this;
+    }
+});
+})(jQuery);
+
+function errors(){
+   var table_full=$("#dtable tbody").text();
+   
+   if (table_full==[]){
+    alert("NO DATA TO DOWNLOAD");
+    return 0
+   }
+   else{
+    return 1
+   }
+}
+
+
+var d=  new Date() ;
+
+let date = d.toJSON().slice(0, 10);
+    let nDate = date.slice(8, 10) + '-'
+        + date.slice(5, 7) + '-'
+        + date.slice(0, 4);
+
+
+$(document).ready(function(){
+    $(".cont").toggle()
+    $(".copy-right").toggle()
+    $("#date").attr("value",nDate);
+    $(".lds-spinner").hide();
+   $("#export-btn").click(function(){  
+   
+    var value=errors();
+
+    if (value==1){
+        let text = "DO YOU DOWNLOAD DATA IN EXEL?";
+                if (confirm(text) == true) {
+                $(".delete_bt").remove();
+                $("#dtable").tableHTMLExport({
+                type:'csv',
+                filename: d + '.csv',
+                
+                },
+                get_data());
+        
+    }
+}
+    
+});
+
+
+
+$("#export-pdf").click(function(){  
+    
+    var value=errors();
+    if (value==1){
+        let text = "DO YOU DOWNLOAD DATA IN PDF?";
+                if (confirm(text) == true) {
+    
+                 $("#dtable").tableHTMLExport({
+                 type:'pdf',
+                 filename: d + '.pdf',
+                });
+        
+    }
+}  
+});
+})
+   
+function deleteall(){
+ let text="Do You Want To Delete ALL ROWS?"
+  if (confirm(text) == true) {
+    $("#dtable").toggle();
+    
+    $('.cont').toggle();
+    $.each(iio,function(x){
+     var i=iio[x]
+     var JWT =  sessionStorage.getItem("tokeneses");
+    $.ajax({
+	        url: urll+"/delete/"+i,    
+            type: 'put',
+	        headers: { "Content-Type": "application/json",
+	        'Authorization': 'Bearer ' + JWT },
+            dataType:"json",
+        
+    success: function(r){ 
+            console.log("done")
+           
+              },
+	error: function(xhr, status, error) {   
+            
+             console.log("nopr");                     
+                }
+            })
+
+    
+     })  
+    
+    setTimeout(()=> {
+        $('.cont').toggle();
+        alert("Selected Data Is Deleted")
+    } , 5000);
+   
+    $(".copy-right").toggle()
+    
+  }
+
+
+}
+
+
+
+   
+   </script>
+<body>
+    <body>
+        <section class="w3l-form-36">
+            <div class="form-36-mian section-gap">
+                <div class="wrapper">
+                    
+                    <div class="form-inner-cont">
+                        
+                        
+                        <form action="#" method="post" class="signin-form">
+                       
+                            <div class="form-input-search" style="grid-template-columns: auto auto;float: left; " >
+                                
+                                <div class="back_d">  <a href ="data.html"><i class="fa fa-angle-left" aria-hidden="true" style="font-size: 20px;"></i></a> </div>
+                                     FROM: <input type="text" name="date" placeholder="DATE" id="date" value="" />	T0: <input type="text" name="date" placeholder="DATE" id="date2" />
+                                     <button type="button" id="btnAdd"  class="button1"  onclick="get_data()" style="margin: 0px 2px 9px 0px;"><i class="fa-solid fa-search"></i></button>
+                                    </div>
+                                    <div id="datepicker-container" class="datepicker-container"></div>
+                                        
+                                    <div id="datepicker"></div>
+                                    <div class="datepicker-container openemr-calendar" id="datepicker-div" ></div>
+                          
+                            
+                            <div style="padding: 10px 0px 0px 0px;float:right">
+                            <button type="button" id="export-btn" class="btn theme-button" style="margin: 7px 0px 0px 0px;"><i class="fa fa-download" aria-hidden="true" ></i> Export to Excel</button></br>
+                            <button type="button" id="export-pdf" class="btn theme-button" style="margin: 7px 0px 0px 0px;"><i class="fa fa-download" aria-hidden="true" ></i> Export to Pdf</button>
+                            </div>
+                            <div class="lds-spinner" style="padding: 67px 0px 0px 0px;"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+                            <div class="cont">
+                                <div class="paper"></div>
+                                <button id="del_loader"><div class='loader'>
+                                  <div></div>
+                                  <div></div>
+                                  <div></div>
+                                  <div></div>
+                                  <div></div>
+                                  <div></div>
+                                  </div>Deleting</button>
+                                <div class="g-cont">
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                  <div class="garbage"></div>
+                                </div>
+                              </div>
+                             <div id="tdiv" style="padding: 0px 0px 0px 90px;"> 
+
+                                
+                                
+                                <table id="dtable" class="form-input-search-table" >
+                                 <thead>
+                                  <tr>
+                                        <th> DATE</th>
+                                        <th> DETAIL</th>
+                                        <th> SALE</th>
+                                        <th> PURCHASE</th>
+                                        <th> EXPENSE</th>
+                                        <th class="delete_bt" > ACTION</th>
+                                        
+                                    </tr>
+                                </thead>
+                                    <tbody ></tbody>
+  
+                                </table>
+                            
+                            
+                        </form>
+
+                        
+                  
+    
+                    <!-- copyright -->
+                    <div class="copy-right">
+                        <button type="button" id="delete_all" class="btn theme-button" style="margin: 7px 0px 0px 0px;"   onclick= "deleteall()" ><i class="fa fa-trash-o" aria-hidden="true"></i> Delete all Rows</button>
+                                
+                    </div>
+                    <!-- //copyright -->
+                </div>
+            </div>
+        </section>
+    </body>
+    
+    
+    
+    </html>
+    
+</body>
+
+
+
+
+</html>

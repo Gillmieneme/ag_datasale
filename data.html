@@ -1,0 +1,428 @@
+<!--
+Author: W3layouts
+Author URL: http://w3layouts.com
+-->
+
+
+<!DOCTYPE html>
+<html lang="zxx">
+
+<head>
+    <title>Stock Signup Form Responsive Widget Template :: W3layouts</title>
+		<!-- Meta tags -->
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="ie=edge">
+		<!-- //Meta tags -->
+    <link rel="stylesheet" href="css/style.css" type="text/css" media="all" /><!-- Style-CSS -->
+    <link href="css/font-awesome.css" rel="stylesheet"><!-- font-awesome-icons -->
+	<script src="https://kit.fontawesome.com/0ab133c172.js" crossorigin="anonymous"></script>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+
+	<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+	<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+	
+</head>
+<script>
+
+
+
+var b= new Date();
+let date = b.toJSON().slice(0, 10);
+    let nDate = date.slice(8, 10) + '-'
+        + date.slice(5, 7) + '-'
+        + date.slice(0, 4);
+
+function c_date(){
+	var dt=$("#date").val();
+		if(dt>nDate){
+			alert("Error: Selected date cannot be greater then Current date")
+			$("#date").addClass("input--error")
+			return false
+		}
+
+	}
+
+$( function() {
+    $( "#date" ).datepicker({
+		onSelect:function(dateText, inst){
+			$("#date").removeClass("input--error");
+		c_date();
+	},
+
+        dateFormat: 'dd-mm-yy',
+        defaultDate:'today'
+    });
+	
+  } );
+
+
+
+var t_exp=[]; 
+var a_exp=[0];
+var total_profit;
+var latest=[];
+var incamount=$("#income_amount").val();
+var urll="https://33zozf7hzkfvv3wrdbnf4xf4ye0hnkxj.lambda-url.ap-southeast-2.on.aws";
+
+
+function expense_add(date,type,detailz,amounttt){
+
+	var r_date=c_date();
+	var date_c=errors();
+	if (r_date==false){
+		return false
+	}
+
+	if (date_c==false){
+		return false
+	}
+	
+	$("#save").toggle();
+	$("#sig_in").toggle();
+	var form_data={dates:date,type_val:type,detail:detailz,amount:amounttt};
+	var JWT =  sessionStorage.getItem("tokeneses");	
+	var dt=$("#date").val();
+		
+
+    $.ajax({
+		url: urll+"/posts",    
+        type: 'POST',
+		data: JSON.stringify(form_data),
+		headers: { "Content-Type": "application/json",
+		'Authorization': 'Bearer ' + JWT },
+        dataType:"JSON",
+        
+        success: function(data){
+			$(".social-icons").addClass("added")
+			$(".social-icons").text("Data Added Successfully");
+            console.log('success',data);   
+			$(".dtable tbody").empty();
+			$("#save").toggle();
+	        $("#sig_in").toggle();
+        },
+	error: function(xhr, status, error) {
+		console.log("error")
+		$("#sig_in").toggle();
+		$("#save").toggle();
+		$(".social-icons").addClass("not_added")
+		alert("Please Try Again")
+		$(".social-icons").text("DATA NOT ADDED");
+ 	
+ }
+})
+get_profit_la()
+}; 
+
+
+ $(document).on('keypress','input',function(event){
+  if(event.which  == '13'){
+	
+	var id_this=$(this).attr('class')
+	var id_next=$(this).closest('tr').next().attr('id')
+	
+	if (id_this=='additionalexp'  || id_this=='additionalexp input--error'  ){
+		$(this).closest('tr').find('input.additionalexpa').focus();
+	}
+	else if(id_this=='additionalexpa' || id_this=='additionalexpa input--error'){
+		$(this).closest('tr').next().find('input.additionalexp').focus();
+		if(id_next==undefined  ){
+		
+		$("#save").click();
+
+	}
+	}
+}
+});
+
+
+
+
+$(document).ready(function(){
+	
+
+
+	$("#sig_in").toggle();
+	$("#date").attr("value",nDate);
+	get_profit_la()
+})
+
+
+
+function errors(){
+	var l=0;
+	var z=0;
+	var reTval=true;
+	var dt=$("#date").val();
+	var detail=$(".additionalexp").val();
+	var amount=$(".additionalexpa").val();
+	var tableb=$("#dtable tbody").html();
+	
+	var no=$('.dtable tr:last').attr('id');
+	a=(parseInt(no))
+	
+
+	for (let i=1;i<=a;i++){
+	var x =  $("#"+i+"expenses").val();
+		var y=$("#"+i+"amountexp").val();
+		if (x==[]){
+			
+			$("#detail_error").text("DETAIL  is missing");
+			$("#"+i+"expenses").addClass("input--error")
+
+			reTval=false;
+
+			if (l==0){
+				$("#"+i+"expenses").focus();
+				l=1;
+			}
+			
+		};
+		if (y==[]){
+			
+			$("#amount_error").text("AMOUNT  is missing");
+			$("#"+i+"amountexp").addClass("input--error")
+			reTval=false;
+			if (z==0){
+				$("#"+i+"amountexp").focus();
+				z=1;
+			}
+
+
+	
+			
+		}
+	}
+	if (dt==[]){
+			$("#dtae_error").text("DATE  is missing");
+			$("#date").addClass("input--error")
+			reTval=false;
+			
+		}
+	
+	if (tableb==[]){
+		$("#amount_error").text("AMOUNT  is missing");
+		$("#detail_error").text("DETAIL  is missing");
+		alert("PRESS ON ADD TO ADD COLUMNS")
+		reTval=false;
+		
+	}
+	$('.additionalexp').each(function(){
+		if ( $(this)==null ){
+			alert("hi")
+		}
+	})
+	
+	return reTval
+}
+
+
+
+function get_profit_la(){
+	var JWT =  sessionStorage.getItem("tokeneses");
+	$.ajax({
+		url:urll+"/latest",    
+        type: 'get',
+		headers: { "Content-Type": "application/json",
+		'Authorization': 'Bearer ' + JWT },
+        dataType:"json",
+        
+        complete: function(r){
+            var dataes=r.responseText
+            var json_rep= JSON.parse(dataes);
+			console.log(json_rep);
+			
+            console.log('success amount',json_rep["profit"]);
+			latest.push(json_rep["profit"])
+            $("#dtable #8").empty();
+			$("#l").text(json_rep["profit"]);   
+			$(".view_user").text(json_rep["usernaem"]);   
+        },
+	        error: function(xhr, status, error) {
+             
+                var err = JSON.parse(xhr.responseText);
+             console.log(err);                     
+ }
+})
+}
+
+
+
+
+$(document).on('keyup','.additionalexpa',function(e) {
+	       
+			profit_cal()
+ 
+		});
+
+function profit_cal(){
+	
+			var incamount=latest[latest.length-1]
+				var no=$('.dtable tr:last').attr('id');
+				a=(parseInt(no))
+				for (let i=1;i<=a;i++){
+			     	var x =  $("#"+i+"amountexp").val();
+					
+					if (x==[] || isNaN(x)){
+						x=0;
+						a_exp.push(parseInt(x));
+					}
+					else{	
+						a_exp.push(parseInt(x));
+					}
+				}
+
+				var a_allexp=0;
+				for ( var i of a_exp){
+				 a_allexp=a_allexp+i}
+				
+				var type=$('input[name="age"]:checked').val();
+	
+	            if (type==1){
+			    var prof=incamount+a_allexp;
+				total_profit=prof;}
+				
+				else{
+					var prof=incamount-a_allexp;
+				total_profit=prof;
+				
+				}a_exp=[0];
+				$("#l").text(prof);}
+
+function addField(){
+	
+	c_date();
+		var trid=$('.dtable tr:last').attr('id');
+		 var id=0;
+		
+		if(trid== undefined)
+		{
+		id=1;
+		}
+		else
+		{
+		id=parseInt(trid) +1;
+		}
+	
+	var idexpenses= id+"expenses"
+	var idamountexp=id+"amountexp"
+	
+	var tds='<tr id='+id+'> <td  class="delete_bt"><button type="button" id="btnAdd"  class="button1"   style="margin: 0px 2px 9px 0px;"  onclick='+ "delete_id($(this).closest('tr').attr('id'))" + '><i class="fa fa-trash-o" aria-hidden="true"></i>  </button> </td>'+'<td><div class="form-inputs " style="width:100%" ><input  class="additionalexp" id='+idexpenses+' type="text" name="text" placeholder="Detail" id="expense_detail" /></div>' + '</td>'+'<td>' + '<div class="form-inputs " style="width:100%" ><input class="additionalexpa" id='+idamountexp+'  type="number" name="Amount" placeholder="Amount" id="expense_amount"/></div>' + '</td></tr>';
+	$(".dtable").append(tds);
+	
+	}
+
+
+	function delete_id(x){
+		$("#"+x).remove();
+		profit_cal()
+}
+
+	
+function adddata(){
+	    
+		var dt=$("#date").val();
+		var oo=0;
+		$(".additionalexp").removeClass("input--error");
+		$(".additionalexpa").removeClass("input--error");
+		$("#date").removeClass("input--error");
+		$(".not_added").empty();
+		$(".social-icons").empty();
+
+
+		$("#dtable tbody tr").each(function(){
+			oo++;
+			var type=$('input[name="age"]:checked').val();
+			var detailz=  $("#"+oo+"expenses").val();
+			var x =  $("#"+oo+"amountexp").val();
+			if (detailz==undefined&&x==undefined){
+				console.log("this was deleted")
+				return;
+			}
+			else{
+			expense_add(dt,type,detailz,x);}
+		})
+		
+		errors()
+		oo=0;
+}
+
+
+
+</script>
+
+	
+<body>
+	<section class="w3l-form-36">
+		<div class="form-36-mian section-gap">
+			<div class="wrapper">
+				<div class="form-inner-cont">
+					<div class="view">  <a href ="search.html"><i class="fa-solid fa-search"></i> View</a> </div>
+					<div class="view_user"><i class="fa-solid fa-search"></i> </a> </div>
+					
+					<form action="#" method="post" class="signin-form"  style="    padding: 0px 1px 21px 33px;">
+						<div class="social-icons"></div>
+						<input type="radio" id="true" name="age" value="1" checked="checked">
+                        <label for="true" >Sales</label><br>
+						<input type="radio" id="expense" name="age" value="2">
+  						<label for="expense">Expense</label><br>
+						<input type="radio" id="purchase" name="age" value="3">
+  						<label for="purchase">Purchase</label><br>
+
+
+						<div class="form-input" style="grid-template-columns: auto auto;" >
+							
+								 <input type="text" name="date" placeholder="DATE"  id="date" />	
+						</div>
+						<div id="dtae_error" class="not_added"></div>
+	
+						
+						<label id='l' style="float:right;width: 62%;color:limegreen;font-weight: bold;padding: 10px 0px 0px 0px;font-size: 19px;">
+							PROFIT
+						</label>
+						<div>
+									
+							<button type="button" id="btnAdd"  class="btn theme-button" onclick="addField()"> ADD</button>
+						
+				        </div>
+						
+						<table class="dtable"  id="dtable" style="width: 43%;">
+							<thead>
+								<th></th>
+								<th> DETAIL</th>
+								<th> AMOUNT</th>
+							</thead>
+							<tbody></tbody>
+					    </table>
+
+
+						<table id="error_tb" style="table-layout: fixed;width: 43%;">
+							<tr>
+						<td><div id="detail_error" class="not_added" ></div></td>
+						<td><div id="amount_error" class="not_added" ></div></td>
+					</tr>
+					</table>
+						<div style="float:right;width:60%;" >
+						<button type="button" id="save"  class="btn theme-button" onclick="adddata()">SAVE</button>
+						<button type="button" id="sig_in"  class="btn theme-button" >Saving<i class="fa fa-spinner fa-spin"></i></button>
+						</div>
+					</form>
+
+					
+					
+				
+				<!-- copyright -->
+				<div class="login_pg">
+					<a href="index.html"><i class="fa fa-user-o" aria-hidden="true"></i> Change User</a>
+				</div>
+
+			</div>
+		</div>
+	</section>
+</body>
+
+
+
+</html>
